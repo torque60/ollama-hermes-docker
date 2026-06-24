@@ -1,0 +1,59 @@
+# =============================================================
+#  Ollama (+ 将来 Hermes Agent) Docker Compose
+# -------------------------------------------------------------
+#  現状: ollama サービスのみ起動する。
+#  将来: 下部の hermes サービスのコメントを外せば連携できる。
+#  起動:  docker compose up -d
+#  確認:  curl http://localhost:11434   # → "Ollama is running"
+# =============================================================
+
+services:
+  # ===== Ollama: ローカル LLM サーバ =====
+  ollama:
+    image: ollama/ollama:latest          # 公式ビルド済みイメージ（Dockerfile 不要）
+    container_name: ollama
+    ports:
+      - "11434:11434"                    # ホスト → コンテナ。APIをホストからも叩ける
+    volumes:
+      - ollama_data:/root/.ollama        # ★モデル保存先を永続化（消えると毎回再DL）
+    restart: unless-stopped
+    environment: 
+      - OLLAMA_CONTEXT_LENGTH=64000       # ollamaのコンテキスト量を設定
+
+    # --- GPUを使う場合のみ、以下のコメントを外す ---
+    # 前提: WSL2側に nvidia-container-toolkit 導入済み + Docker再起動済み
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # ===== Hermes Agent（将来用・今はコメントアウト） =====
+  # 使うとき:
+  #   1) 下のブロックのコメントを外す
+  #   2) ./hermes-config/config.yaml に下記を記述（base_url はサービス名 ollama を使う）:
+  #        model:
+  #          default: qwen2.5-coder:32b   # tool-calling対応モデル
+  #          provider: custom
+  #          base_url: http://ollama:11434/v1   # ★localhostではなくサービス名 + /v1
+  #          context_length: 64000              # Hermesはツール呼び出しに64k以上を要求
+  #   3) Hermesは対話CLI/TUIなので、常駐ではなく run で起動するのが自然:
+  #        docker compose run --rm hermes hermes --tui
+  #
+  hermes:
+    image: nousresearch/hermes-agent:latest   # 公式イメージ（本体改造しないので Dockerfile 不要）
+    container_name: hermes
+    depends_on:
+      - ollama
+    environment: 
+      - PUID=1000      # id -u の値
+      - PGID=1000      # id -g の値
+    volumes:
+      - ./hermes-config:/opt/data          # config.yaml と skills/ を永続化＆ホストで編集
+    stdin_open: true                           # 対話用（-i 相当）
+    tty: true                                  # 対話用（-t 相当）
+
+volumes:
+  ollama_data:                            # Ollamaのモデル永続化ボリューム
