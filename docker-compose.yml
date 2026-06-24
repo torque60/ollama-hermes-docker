@@ -19,6 +19,7 @@ services:
     restart: unless-stopped
     environment: 
       - OLLAMA_CONTEXT_LENGTH=64000       # ollamaのコンテキスト量を設定
+      - OLLAMA_NUM_PAEALLEL=2
 
     # --- GPUを使う場合のみ、以下のコメントを外す ---
     # 前提: WSL2側に nvidia-container-toolkit 導入済み + Docker再起動済み

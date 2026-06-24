@@ -38,17 +38,17 @@ curl http://localhost:11434
 
 ```bash
 # モデルをダウンロード（コンテナ内の ollama コマンドを実行）
-docker compose exec ollama ollama pull llama3.2:1b
+docker compose exec ollama ollama pull qwen3.5:0.8b
 
 # 対話で試す
-docker compose exec -it ollama ollama run llama3.2:1b
+docker compose exec -it ollama ollama run qwen3.5:0.8b
 ```
 
 API 経由でも確認（Hermes連携時はこの形を使う）:
 
 ```bash
 curl http://localhost:11434/api/generate -d '{
-  "model": "llama3.2:1b",
+  "model": "qwen3.5:0.8b",
   "prompt": "こんにちは",
   "stream": false
 }'
