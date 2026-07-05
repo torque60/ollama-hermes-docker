@@ -1,1 +1,3 @@
-hermes-config/
+hermes-config/*
+!hermes-config/config.yaml
+.env
