@@ -89,7 +89,7 @@ docker compose logs -f open-webui
 | 症状 | 対処 |
 |---|---|
 | GUIが開けない | Docker Desktop の WSL integration が**このdistroで有効**か確認 / `hostname -I` のIPで `http://<IP>:3000` |
-| モデルが出ない / 401 | Open WebUI の `OPENAI_API_KEY` と Hermes の `API_SERVER_KEY` が**一致**しているか |
+| モデルが出ない / 401 | ①Hermes側: `./hermes-config/.env`(=/opt/data/.env)や `profiles/*/.env` に古い `API_SERVER_KEY` が焼き付いてOS envを上書きしていないか→該当行を削除して `--force-recreate`。②OpenWebUI側: 初回DB保存の古いキーを使い続ける→`ENABLE_PERSISTENT_CONFIG=false`（本repo採用）で env を常に正にするか、Admin→Connections で手動更新 |
 | 502 / 接続不可 | Hermes が `API_SERVER_HOST=0.0.0.0` で待受けているか、URLが `http://hermes:8642/v1`（**/v1**）か |
 | Hermes 起動失敗 | `docker compose logs hermes`。`config.yaml` の model / base_url(`http://ollama:11434/v1`) と 64k ctx を確認 |
 | モデル未DL | `docker compose exec ollama ollama pull gemma4:12b-it-qat` |

@@ -132,6 +132,8 @@
 1. **`compose.yaml` の環境変数タイポ**: `OLLAMA_NUM_PAEALLEL` → 正しくは `OLLAMA_NUM_PARALLEL`。現状は**変数名が無効なので並列設定が効いていない**（Ollamaは既定値で動作）。→ 今回の編集で修正。
 2. **マウント先＆skills（解決済・公式+deepwiki裏取り）**: Hermes の全状態は **`/opt/data`**（`HERMES_HOME=/opt/data` 固定）配下 = `config.yaml` / `.env` / `SOUL.md` / **`skills/`** / `memories/` / `sessions/` / `logs/`。ホスト `~/.hermes` にマップするのが公式例で、現行 `./hermes-config:/opt/data` は**正しく、マウント1本で全部ホスト永続**。**カスタムskillは `./hermes-config/skills/` に置く**（起動ログの `~/.hermes/skills/` は表示ラベルで実体は `/opt/data/skills/`）。旧README本文の `/root/.hermes` は**誤り**（要修正）。
 3. **作業シェルに docker が無い**: この Claude Code のシェルには `docker` が入っていない（PATH無・ソケット無）。**`docker compose up` 等の実行はユーザーの docker 環境で行う**。
+4. **【ハマり罠・実機で確認】Hermes の鍵 shadowing**: api_server は `API_SERVER_KEY` を **`/opt/data/.env`（=ホスト `./hermes-config/.env`）→ OS環境変数** の順で解決し、初回起動時に env の値が内部 `.env` へ焼き付く。古い値が残ると**OS env(正しい64字)を上書きして起動拒否**（"placeholder or too short"）。対処: `./hermes-config/.env` と `profiles/*/.env` から `API_SERVER_KEY` 行を削除→`--force-recreate`。
+5. **【ハマり罠・実機で確認】Open WebUI の PersistentConfig**: `OPENAI_API_KEY`/`OPENAI_API_BASE_URL` は**初回起動時のみ env からDBへ取り込み、以後DB優先**。env を変えても反映されずモデルが出ない（401）。対処: compose に **`ENABLE_PERSISTENT_CONFIG=false`**（env を常に正）を設定、または Admin→Connections で手動更新、または `RESET_CONFIG_ON_START=true` で一度上書き。→ 本repoは `ENABLE_PERSISTENT_CONFIG=false` を採用。
 
 ---
 
