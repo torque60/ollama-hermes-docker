@@ -59,11 +59,12 @@
 
 §2 の「Open WebUI をフロントにする」路線は**撤回**。**実機検証で、OpenWebUI(gateway経由)では Hermes のスキル(`/grill`)が発火しない**ことが判明した。要件定義の核は grill スキルなので、**スキルが確実に発火する Hermes CLI/TUI を対話フロントに採用**し、Open WebUI を構成から外した。
 
-- 新構成: **[初学者] ⇄ Hermes Agent(TUI) → Ollama → LLM**。hermes は `gateway run` を s6 監視下の **idle 常駐（sleep infinity ハートビート）**として使うだけ（API/メッセージング未起動＝鍵不要）。運用: `up -d` → `exec -it hermes bash` → `hermes --tui`。
+- 新構成: **[初学者] ⇄ Hermes Agent(TUI) → Ollama → LLM**。hermes は常駐させず `docker compose run --rm -it hermes` で**その都度1プロセスだけ**起こす。運用: `up -d`(ollama) → `run --rm -it hermes bash` → `hermes --tui`。--rm でも状態はマウントで永続。
+- 【2026-07-10 追補・根拠】keep-alive常駐（gateway idle 等）＋別の tui は hermes が**2プロセス**になり、公式が「session/memory は同時書込み非対応」と警告。→ **単一プロセスの `run --rm` を採用**（公式も "cleaner and supported" と明言）。gateway idle 常駐案は次善（idle gateway は実質書かないが余計な1プロセス）、無command＋tty/stdin_open のidle chat案は非推奨（keep-alive自体が非サポート・EOFで落ちる）。
 - 根拠: スキルは `/opt/data/skills/<name>` が `/<name>` スラッシュとして自動登録（公式/deepwiki + 実機確認）。gateway は別経路でスキル非対応。
 - 不要化: **Open WebUI サービス／`API_SERVER_*` gateway 設定／`${HERMES_API_KEY}`**（§7 の罠4・5も gateway 前提のため現構成では発生しない）。
 - 退路（合意済）: 仮に将来 GUI が要るなら OpenWebUI を戻せるが、**スキル発火が要件のため既定は CLI/TUI**。
-- 影響: 「`compose up` だけでGUI」ではなく「`up -d` → `exec -it hermes bash` → `hermes --tui`」運用（hermes も `up -d` で idle 常駐）。Windows向け `.sh`(§9) はこの新構成に合わせて作る。
+- 影響: 「`compose up` だけでGUI」ではなく「`up -d`(ollama) → `run --rm -it hermes bash` → `hermes --tui`」運用。Windows向け `.sh`(§9) はこの新構成に合わせて作る。
 
 ## 3. アーキテクチャ（確定・2026-07-10）
 
@@ -73,9 +74,9 @@
         │
         └── 成果物: 引継ぎ書.md ──(手動で手渡し)──> クラウドAI(Claude Code / Codex)
 
-起動: docker compose up -d                 # ollama + hermes(idle常駐)
-      docker compose exec -it hermes bash   # hermes に入る
-      hermes --tui                          # 対話TUI（スキル発火）
+起動: docker compose up -d                    # ollama だけ常駐
+      docker compose run --rm -it hermes bash # hermes を1個起こして入る
+      hermes --tui                            # 対話TUI（スキル発火）
 ```
 
 > ⚠️ 直下の旧図（Open WebUI 3サービス構成・2026-07-09）は**廃止**。参考として残置。
@@ -104,7 +105,7 @@
 |---|---|---|
 | インフラ compose + Ollama設定 | ✅ 稼働構成あり（pull済） | `ollama-hermes-docker/compose.yaml`, `hermes-config/config.yaml` |
 | GPU / flash attn / KVキャッシュq8_0 | ✅ 設定済 | `compose.yaml` の ollama `environment` / `deploy` |
-| 対話フロント（Hermes TUI） | ✅ **採用（Open WebUI廃止, 2026-07-10）** | `compose.yaml`（hermes: `gateway run`で idle 常駐 → `exec` → `hermes --tui`） |
+| 対話フロント（Hermes TUI） | ✅ **採用（Open WebUI廃止, 2026-07-10）** | `compose.yaml`（hermes: `profiles:cli`＝`run --rm -it hermes` で1プロセス → `hermes --tui`） |
 | grillスキル移植元 | ✅ 取得済（未移植） | `grill-me-skill/.agents/skills/` |
 | grillスキル（`/grill`・`/torishirabe`） | ✅ 実装・同梱（CLI/TUIで発火確認済） | `hermes-config/skills/` |
 | 引継ぎ書テンプレ | 🟡 設計のみ（下記5.4）。repo成果物化は未 | - |
@@ -178,5 +179,5 @@
 2. **（次）** 実機で **grill → 決定ログ.md → 引継ぎ書.md を1本通す**（＝7/16ポスターの統合検証1回）。
 3. `up`(ollama) ＋ `run`(hermes) の初回導線整理（初回モデルpull自動化、`config.yaml` 既定モデル確認）。
 4. 完全ローカル強化（offline化）。
-5. Windows向けワンストップ `.sh`（前提チェック → nvidia-container-toolkit 自動導入 → `up -d` → `exec`+`hermes --tui` 案内）。※APIサーバ無効なので鍵生成は不要。
+5. Windows向けワンストップ `.sh`（前提チェック → nvidia-container-toolkit 自動導入 → `up -d` → `run --rm -it hermes` 案内）。※APIサーバ不使用なので鍵生成は不要。
 6. （後回し）Obsidian記憶層。

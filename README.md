@@ -75,13 +75,16 @@ docker compose up -d
 
 ## ステップ4: Hermes Agent と対話する（TUI）
 
-Hermes は `up -d` で idle 常駐する（`gateway run` を s6 監視下のハートビートに使うだけで、
-API サーバもメッセージング連携も起動しない＝外部公開なし・鍵不要）。コンテナに入って TUI を起動:
+hermes は常駐させず、`docker compose run` で**その都度1プロセスだけ**起こす（hermes を
+2つ同時に動かすと `/opt/data` のセッション/メモリが競合するため）。`--rm` で毎回破棄しても、
+skills・memory・生成物は `./hermes-config`(=/opt/data マウント)に残る:
 
 ```bash
-docker compose up -d                    # ollama + hermes(idle常駐)
-docker compose exec -it hermes bash     # hermes コンテナに入る
-hermes --tui                            # 対話TUI
+docker compose up -d                       # ollama だけ常駐
+docker compose run --rm -it hermes bash    # hermes を1個起こして入る
+hermes --tui                               # 対話TUI
+# 一発でTUIに入るなら:
+docker compose run --rm -it hermes --tui
 ```
 
 接続先モデルは `hermes-config/config.yaml` の `model.default` で指定（既定はローカル Ollama の

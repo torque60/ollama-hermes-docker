@@ -2,14 +2,15 @@
 #  要件定義サポートAI — Docker Compose
 # -------------------------------------------------------------
 #  構成:  Hermes Agent(TUI) → Ollama → ローカルLLM
-#  - 対話は Hermes を TUI で直接使う（スキル /grill 等はこの経路で発火する）。
+#  - ollama は常駐。hermes は「その都度 1プロセスだけ」起こして対話する（run方式）。
+#    → hermes を2つ同時に動かさない = /opt/data(セッション/メモリ)の同時書込みを回避。
 #  - Open WebUI は廃止（gateway の APIサーバ経由ではスキルが発火しなかったため）。
-#    gateway プロセスは s6 監視下の「idle 常駐」用途のみ（APIサーバ無効・外部公開なし・鍵不要）。
 #
 #  使い方:
-#    docker compose up -d                    # ollama + hermes(idle常駐)
-#    docker compose exec -it hermes bash     # hermes コンテナに入る
-#    hermes --tui                            # 対話TUI（/grill, /torishirabe が発火）
+#    docker compose up -d                       # ollama だけ常駐
+#    docker compose run --rm -it hermes bash    # hermes を1個起こして入る
+#    hermes --tui                               # 対話TUI（/grill, /torishirabe 発火）
+#    # 一発でTUIに入るなら: docker compose run --rm -it hermes --tui
 # =============================================================
 
 services:
@@ -37,27 +38,26 @@ services:
               count: all
               capabilities: [gpu]
 
-  # ===== Hermes Agent: エージェント本体（idle 常駐 → exec で対話） =====
-  #  `gateway run` は s6 監視下で「idle 常駐（sleep infinity ハートビート）」になる公式パターン。
-  #  API_SERVER_* もメッセージング token も設定しない ＝ APIサーバもメッセージングも起動しない
-  #  （外部公開なし・鍵不要）。コンテナを起こしておくためだけに gateway を使う。
-  #  使い方:
-  #    docker compose up -d                    # ollama + hermes(idle常駐)
-  #    docker compose exec -it hermes bash     # 入る
-  #    hermes --tui                            # 対話TUI（スキル /grill, /torishirabe が発火）
-  #  スキル: ./hermes-config/skills/<name>/SKILL.md（= /opt/data/skills/）が /<name> に自動登録。
+  # ===== Hermes Agent: エージェント本体（run で1プロセスだけ起こす） =====
+  #  profiles:["cli"] なので `docker compose up -d` では起動しない。
+  #  `docker compose run` で明示的に、その都度1つだけ起動する（run -it が対話TTYを担う）。
+  #    docker compose run --rm -it hermes bash    # 入ってから hermes --tui
+  #    docker compose run --rm -it hermes --tui   # 直接TUI
+  #  なぜ常駐にしないか: keep-alive常駐 + 別の hermes --tui = 2プロセスになり、
+  #  /opt/data のセッション/メモリが同時書込みで競合する（公式が非対応と警告）。run方式は常に1プロセス。
+  #  --rm でコンテナは毎回破棄されるが、skills/memory/生成物(grill/) は
+  #  ./hermes-config(=/opt/data マウント) に残るので状態は失われない。
+  #  スキル: ./hermes-config/skills/<name>/SKILL.md が /<name> に自動登録。
   hermes:
     image: nousresearch/hermes-agent:latest   # 公式イメージ（Dockerfile 不要）
-    container_name: hermes
+    profiles: ["cli"]                    # up -d では起動しない。run で1プロセスだけ起こす
     depends_on:
       - ollama
-    command: ["gateway", "run"]          # s6監視下で idle 常駐（API/メッセージング未設定＝起動しない）
     environment:
       - PUID=1000                         # /opt/data 配下の生成物をホスト側で扱えるように（id -u）
       - PGID=1000                         # id -g
     volumes:
       - ./hermes-config:/opt/data          # config.yaml / skills/ / 生成物(grill/) を永続化
-    restart: unless-stopped
 
 volumes:
   ollama_data:                            # Ollama のモデル永続化ボリューム
