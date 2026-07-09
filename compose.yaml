@@ -69,7 +69,6 @@ services:
       - OPENAI_API_KEY=${HERMES_API_KEY}  # ★Hermes の API_SERVER_KEY と一致（同じ .env 変数を参照）
       - ENABLE_OPENAI_API=true            # OpenAI互換接続=Hermesを使う（接続先はローカルHermes）
       - ENABLE_OLLAMA_API=false           # Ollama直結は無効（対話はHermes経由に一本化）
-      - ENABLE_PERSISTENT_CONFIG=false    # env(接続URL/キー)を常に正とする。初回DB保存で古い値が焼き付くのを防ぐ（UIでの設定変更は再起動で消える）
       - ANONYMIZED_TELEMETRY=false        # テレメトリ無効
       - DO_NOT_TRACK=true
       - SCARF_NO_ANALYTICS=true

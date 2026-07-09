@@ -89,7 +89,7 @@ docker compose logs -f open-webui
 | 症状 | 対処 |
 |---|---|
 | GUIが開けない | Docker Desktop の WSL integration が**このdistroで有効**か確認 / `hostname -I` のIPで `http://<IP>:3000` |
-| モデルが出ない / 401 | ①Hermes側: `./hermes-config/.env`(=/opt/data/.env)や `profiles/*/.env` に古い `API_SERVER_KEY` が焼き付いてOS envを上書きしていないか→該当行を削除して `--force-recreate`。②OpenWebUI側: 初回DB保存の古いキーを使い続ける→`ENABLE_PERSISTENT_CONFIG=false`（本repo採用）で env を常に正にするか、Admin→Connections で手動更新 |
+| モデルが出ない / 401 | ①Hermes側: `./hermes-config/.env`(=/opt/data/.env)や `profiles/*/.env` に古い `API_SERVER_KEY` が焼き付いてOS envを上書きしていないか→該当行を削除して `--force-recreate`。②OpenWebUI側: 初回DB保存の古いキーを使い続ける→Admin→Connections で手動更新（or `RESET_CONFIG_ON_START=true` ／ volume削除）。※**初回インストールは `.sh` が先に正しい鍵を生成するので既定のまま問題なし**（この罠は汚染volume時のみ） |
 | 502 / 接続不可 | Hermes が `API_SERVER_HOST=0.0.0.0` で待受けているか、URLが `http://hermes:8642/v1`（**/v1**）か |
 | Hermes 起動失敗 | `docker compose logs hermes`。`config.yaml` の model / base_url(`http://ollama:11434/v1`) と 64k ctx を確認 |
 | モデル未DL | `docker compose exec ollama ollama pull gemma4:12b-it-qat` |
@@ -131,6 +131,7 @@ docker compose logs -f open-webui
 - `.env` は `.gitignore` に含める（鍵をコミットしない）。`.gitignore` の現状は要確認・要追記。
 - 既存の `wsl-docker-gpu-setup.md` の手順を、この `.sh` に自動化して取り込む形。
 - 冪等性: 2回目以降の起動でも鍵・モデル・データを作り直さない（`[ -f .env ]` / `ollama list` チェック / named volume 永続化）。
+- **鍵の先生成が肝**: `.sh` が **up の前**に `.env` を作るので、初回起動時点で Hermes 内部 `.env`・OpenWebUI DB とも**正しい鍵でシード**される → §7 の焼き付き罠（Hermes shadowing / OpenWebUI PersistentConfig）は**起きない**。ゆえに `ENABLE_PERSISTENT_CONFIG=false` 等の恒久回避策は不要。
 
 ### Step 6: 後回し
 - Obsidian記憶層（MCP、方式A/B/C）、grillスキルの本格カスタム。
