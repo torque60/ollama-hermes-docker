@@ -1,10 +1,10 @@
 # =============================================================
-#  Ollama (+ 将来 Hermes Agent) Docker Compose
+#  要件定義サポートAI — Docker Compose
 # -------------------------------------------------------------
-#  現状: ollama サービスのみ起動する。
-#  将来: 下部の hermes サービスのコメントを外せば連携できる。
-#  起動:  docker compose up -d
-#  確認:  curl http://localhost:11434   # → "Ollama is running"
+#  構成:  Browser → Open WebUI → Hermes Agent(gateway) → Ollama → LLM
+#  起動:  docker compose up -d          # ollama + hermes + open-webui すべて
+#  GUI :  ブラウザで http://localhost:3000
+#  参考:  https://hermes-agent.nousresearch.com/docs/user-guide/messaging/open-webui
 # =============================================================
 
 services:
@@ -17,14 +17,13 @@ services:
     volumes:
       - ollama_data:/root/.ollama        # ★モデル保存先を永続化（消えると毎回再DL）
     restart: unless-stopped
-    environment: 
-      - OLLAMA_CONTEXT_LENGTH=65536       # ollamaのコンテキスト量を設定。65536(64K=2^16) 131072(128K=2^17)もありだが、Hermes Agentのconfig.yamlも変更が必要。
-      - OLLAMA_NUM_PAEALLEL=2
+    environment:
+      - OLLAMA_CONTEXT_LENGTH=65536       # 64K。Hermesはツール使用に64k以上を要求
+      - OLLAMA_NUM_PARALLEL=2             # ← 旧 OLLAMA_NUM_PAEALLEL（誤字で無効だった）を修正
       - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_KV_CACHE_TYPE=q8_0
 
-    # --- GPUを使う場合のみ、以下のコメントを外す ---
-    # 前提: WSL2側に nvidia-container-toolkit 導入済み + Docker再起動済み
+    # --- GPU（前提: WSL2側に nvidia-container-toolkit 導入済み + Docker再起動済み）---
     deploy:
       resources:
         reservations:
@@ -33,30 +32,51 @@ services:
               count: all
               capabilities: [gpu]
 
-  # ===== Hermes Agent（将来用・今はコメントアウト） =====
-  # 使うとき:
-  #   1) 下のブロックのコメントを外す
-  #   2) ./hermes-config/config.yaml に下記を記述（base_url はサービス名 ollama を使う）:
-  #        model:
-  #          default: qwen2.5-coder:32b   # tool-calling対応モデル
-  #          provider: custom
-  #          base_url: http://ollama:11434/v1   # ★localhostではなくサービス名 + /v1
-  #          context_length: 65536              # Hermesはツール呼び出しに64k以上を要求
-  #   3) Hermesは対話CLI/TUIなので、常駐ではなく run で起動するのが自然:
-  #        docker compose run --rm hermes hermes --tui
-  #
+  # ===== Hermes Agent: エージェント本体（OpenAI互換 gateway サーバとして常駐） =====
+  #  Open WebUI からは OpenAI互換API (http://hermes:8642/v1) として見える。
+  #  ★APIサーバ設定は config.yaml では未対応 → 環境変数で指定する（公式仕様）。
   hermes:
-    image: nousresearch/hermes-agent:latest   # 公式イメージ（本体改造しないので Dockerfile 不要）
+    image: nousresearch/hermes-agent:latest   # 公式イメージ（Dockerfile 不要）
     container_name: hermes
     depends_on:
       - ollama
-    environment: 
-      - PUID=1000      # id -u の値
-      - PGID=1000      # id -g の値
+    command: ["gateway", "run"]          # ENTRYPOINT=hermes なので実質 `hermes gateway run`
+    environment:
+      - PUID=1000                         # id -u の値
+      - PGID=1000                         # id -g の値
+      - API_SERVER_ENABLED=true           # OpenAI互換APIサーバを有効化
+      - API_SERVER_HOST=0.0.0.0           # 他コンテナ(Open WebUI)から届くように（既定は127.0.0.1）
+      - API_SERVER_PORT=8642              # 既定 8642
+      - API_SERVER_KEY=${HERMES_API_KEY:-change-me-local-key}  # ★Open WebUI 側と一致必須
     volumes:
-      - ./hermes-config:/opt/data          # config.yaml と skills/ を永続化＆ホストで編集
-    stdin_open: true                           # 対話用（-i 相当）
-    tty: true                                  # 対話用（-t 相当）
+      - ./hermes-config:/opt/data          # config.yaml と skills/（このイメージのデータ dir は /opt/data）
+    restart: unless-stopped
+    # ホストから直接叩きたい時だけ公開（同一compose網の Open WebUI には不要）:
+    # ports:
+    #   - "8642:8642"
+
+  # ===== Open WebUI: 対話GUI（Hermes のフロント） =====
+  #  ブラウザで http://localhost:3000（WSL2のlocalhost転送でWindows側からも見える）
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main   # 公式ビルド済みイメージ
+    container_name: open-webui
+    depends_on:
+      - hermes
+    ports:
+      - "3000:8080"                        # host:container（内部は8080固定、ホスト3000で公開）
+    environment:
+      - OPENAI_API_BASE_URL=http://hermes:8642/v1              # ★Hermes gateway。/v1 必須
+      - OPENAI_API_KEY=${HERMES_API_KEY:-change-me-local-key}  # ★Hermes の API_SERVER_KEY と一致必須
+      - ENABLE_OPENAI_API=true            # OpenAI互換接続=Hermesを使う（接続先はローカルHermes）
+      - ENABLE_OLLAMA_API=false           # Ollama直結は無効（対話はHermes経由に一本化）
+      - ANONYMIZED_TELEMETRY=false        # テレメトリ無効
+      - DO_NOT_TRACK=true
+      - SCARF_NO_ANALYTICS=true
+      # - WEBUI_AUTH=false                # 単一ユーザーでログイン画面を省きたい場合のみ有効化
+    volumes:
+      - open-webui:/app/backend/data       # 設定・チャット履歴を永続化
+    restart: unless-stopped
 
 volumes:
-  ollama_data:                            # Ollamaのモデル永続化ボリューム
+  ollama_data:                            # Ollama のモデル永続化ボリューム
+  open-webui:                             # Open WebUI のデータ永続化ボリューム
