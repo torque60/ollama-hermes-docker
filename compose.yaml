@@ -18,8 +18,10 @@ services:
       - ollama_data:/root/.ollama        # ★モデル保存先を永続化（消えると毎回再DL）
     restart: unless-stopped
     environment: 
-      - OLLAMA_CONTEXT_LENGTH=64000       # ollamaのコンテキスト量を設定。128000もありだが、Hermes Agentのconfig.yamlも変更が必要。
+      - OLLAMA_CONTEXT_LENGTH=65536       # ollamaのコンテキスト量を設定。65536(64K=2^16) 131072(128K=2^17)もありだが、Hermes Agentのconfig.yamlも変更が必要。
       - OLLAMA_NUM_PAEALLEL=2
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KV_CACHE_TYPE=q8_0
 
     # --- GPUを使う場合のみ、以下のコメントを外す ---
     # 前提: WSL2側に nvidia-container-toolkit 導入済み + Docker再起動済み
@@ -39,7 +41,7 @@ services:
   #          default: qwen2.5-coder:32b   # tool-calling対応モデル
   #          provider: custom
   #          base_url: http://ollama:11434/v1   # ★localhostではなくサービス名 + /v1
-  #          context_length: 64000              # Hermesはツール呼び出しに64k以上を要求
+  #          context_length: 65536              # Hermesはツール呼び出しに64k以上を要求
   #   3) Hermesは対話CLI/TUIなので、常駐ではなく run で起動するのが自然:
   #        docker compose run --rm hermes hermes --tui
   #
