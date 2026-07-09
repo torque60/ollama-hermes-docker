@@ -19,7 +19,10 @@ Browser → Open WebUI(:3000) → Hermes Agent(gateway :8642, OpenAI互換) → 
 - Hermes gateway 起動: `command: ["gateway", "run"]`（ENTRYPOINT=hermes → `hermes gateway run`）
 - **APIサーバ設定は config.yaml 非対応＝環境変数のみ**: `API_SERVER_ENABLED` / `API_SERVER_KEY` / `API_SERVER_HOST` / `API_SERVER_PORT`（既定8642）
 - 他コンテナから届かせるには `API_SERVER_HOST=0.0.0.0`
-- Hermes のデータ/設定 dir = **`/opt/data`**（`./hermes-config` マウントで正しい）
+- **Hermes の全状態は `/opt/data` 配下**（`HERMES_HOME=/opt/data` 固定。envで変更可だが通常不要）。`config.yaml` / `.env` / `SOUL.md` / `skills/` / `memories/`(USER.md,MEMORY.md) / `sessions/` / `logs/` などすべてここ。ホスト `~/.hermes` にマップするのが公式例 → 現行 `./hermes-config:/opt/data` で **config も カスタムskill も memory も全部ホストに永続**（マウントは1本でよい）。
+- **カスタムskillの置き場 = `/opt/data/skills/`（= ホスト `./hermes-config/skills/<skill>/SKILL.md`）**。起動ログの `~/.hermes/skills/` は表示ラベルで、実体は `/opt/data/skills/`。
+- UID: 既定10000。`PUID`/`PGID`（or `HERMES_UID`/`HERMES_GID`）で remap。**entrypoint override や `--user` は禁止**（`command: ["gateway","run"]` は引数指定でありentrypoint上書きではない＝OK）。
+- **APIキーは 0.0.0.0 公開時に厳格化**: プレースホルダ/短い鍵は起動拒否（terminal-capable API=RCE対策）。`openssl rand -hex 32` 推奨。
 - Open WebUI 側: `OPENAI_API_BASE_URL=http://hermes:8642/v1`（**/v1必須**）＋ `OPENAI_API_KEY`（Hermesと一致）＋ `ENABLE_OLLAMA_API=false`
 - OpenAI互換EP: `/v1/chat/completions`, `/v1/models`, ヘルス `/health`
 
@@ -47,15 +50,19 @@ Browser → Open WebUI(:3000) → Hermes Agent(gateway :8642, OpenAI互換) → 
   （`OPENAI_API_BASE_URL=http://hermes:8642/v1` / `OPENAI_API_KEY=${HERMES_API_KEY:-...}` / `ENABLE_OLLAMA_API=false`）
 - **ollama**: 誤字 `OLLAMA_NUM_PAEALLEL` → `OLLAMA_NUM_PARALLEL` を修正
 
-### APIキー
-- ローカル検証は既定値 `change-me-local-key` で両サービス一致（localhost限定なので当面可）。
-- 公開・恒久運用時は `openssl rand -hex 32` で生成し、環境変数 `HERMES_API_KEY` を設定（compose の `${HERMES_API_KEY:-...}` が両サービスに同じ値を注入）。
+### APIキー（初回から必須）
+- compose は `${HERMES_API_KEY}`（**プレースホルダ既定値なし**＝リポジトリに推測可能な鍵を焼き込まない）。**`.env` に強い鍵を必ず用意**する:
+  ```bash
+  echo "HERMES_API_KEY=$(openssl rand -hex 32)" > .env
+  ```
+- compose が同フォルダの `.env` を自動読込し、hermes(`API_SERVER_KEY`) と open-webui(`OPENAI_API_KEY`) に**同じ鍵**を注入（一致必須）。
+- ※ `API_SERVER_HOST=0.0.0.0`（コンテナ間通信に必須）だと Hermes は**プレースホルダ/16字未満の鍵を起動拒否**する。ゆえに鍵生成は Step 5 まで遅延できず**初回から必要**。
 
 ### 起動・確認手順（**あなたの docker 環境で実行**。`!` 付けでこのセッションに貼付可）
 ```bash
 cd <repo>/ollama-hermes-docker
-# 必要なら鍵を設定（未設定なら既定 change-me-local-key で動く）
-# export HERMES_API_KEY=$(openssl rand -hex 32)
+# 鍵を用意（初回必須。既に .env があれば作り直さない）
+[ -f .env ] || echo "HERMES_API_KEY=$(openssl rand -hex 32)" > .env
 
 docker compose up -d                       # ollama + hermes + open-webui
 docker compose ps
@@ -95,7 +102,7 @@ docker compose logs -f open-webui
 - `hermes-config/skills/` に **grill スキル（SKILL.md）**を配置、または Open WebUI のモデルプリセットにgrillシステムプロンプトを設定。
 - 中核ロジック（`grilling` 由来）: 1問ずつ／事実は自分で調べ決定はユーザーに委ねる／各問に推奨解／合意まで着手しない。
 - 出力ゴール = 引継ぎ書.md（`DESIGN-AND-STATUS.md` §5.4 のテンプレ）。
-- ※ `hermes-config/skills/` を実際に読むか（configの `skills.external_dirs` 等）はここで検証。
+- skill の置き場は **`./hermes-config/skills/<skill>/SKILL.md`**（コンテナ `/opt/data/skills/`）で確定（公式+deepwiki裏取り）。ここに置けば永続＆読み込まれる。
 
 ### Step 3: 「compose up だけ」への安定化
 - 初回モデル pull の自動化（entrypoint or `make` ターゲット）。

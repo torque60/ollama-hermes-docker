@@ -130,7 +130,7 @@
 
 ## 7. 見つかった不整合・要修正（現物）
 1. **`compose.yaml` の環境変数タイポ**: `OLLAMA_NUM_PAEALLEL` → 正しくは `OLLAMA_NUM_PARALLEL`。現状は**変数名が無効なので並列設定が効いていない**（Ollamaは既定値で動作）。→ 今回の編集で修正。
-2. **マウント先（解決済）**: このイメージのデータ/設定ディレクトリは **`/opt/data`**（config.yaml と skills/ がここ）。`compose.yaml` の `./hermes-config:/opt/data` が**正しい**（deepwiki 裏取り）。旧README本文の `/root/.hermes` 記述は**誤り** → README の当該記述は要修正（別途）。
+2. **マウント先＆skills（解決済・公式+deepwiki裏取り）**: Hermes の全状態は **`/opt/data`**（`HERMES_HOME=/opt/data` 固定）配下 = `config.yaml` / `.env` / `SOUL.md` / **`skills/`** / `memories/` / `sessions/` / `logs/`。ホスト `~/.hermes` にマップするのが公式例で、現行 `./hermes-config:/opt/data` は**正しく、マウント1本で全部ホスト永続**。**カスタムskillは `./hermes-config/skills/` に置く**（起動ログの `~/.hermes/skills/` は表示ラベルで実体は `/opt/data/skills/`）。旧README本文の `/root/.hermes` は**誤り**（要修正）。
 3. **作業シェルに docker が無い**: この Claude Code のシェルには `docker` が入っていない（PATH無・ソケット無）。**`docker compose up` 等の実行はユーザーの docker 環境で行う**。
 
 ---
@@ -138,7 +138,7 @@
 ## 8. 未解決の論点（フォーク）
 - ~~Hermes を使うか~~ → **決定: 使う**（Open WebUI のフロント越しに Hermes gateway。§2）。
 - grill を「Hermes のスキル(SKILL.md)」で実装するか、「Open WebUI のモデルプリセット(システムプロンプト)」で実装するか（Step2で検証）。
-- `hermes-config/skills/` を Hermes が実際に読むか（config の `skills.external_dirs` 等）。
+- ~~`hermes-config/skills/` を読むか~~ → **解決: `/opt/data/skills/`（= ホスト `./hermes-config/skills/`）に置けば永続＆読込。マウント1本で config/skill/memory 全部カバー**。
 - 記憶層の実装（§5.5 の A/B/C）。まずは Hermes 組込みメモリで足りるか。
 - 中核モデルの最終確定（gemma4:12b-it-qat で進行中）。
 
