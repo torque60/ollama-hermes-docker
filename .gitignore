@@ -1,3 +1,4 @@
 hermes-config/*
 !hermes-config/config.yaml
+!hermes-config/skills
 .env

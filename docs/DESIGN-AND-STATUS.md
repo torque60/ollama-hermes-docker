@@ -99,6 +99,7 @@
 - **デフォルト = `gemma4:12b-it-qat`**（`config.yaml` の `model.default` および `custom_providers`）
 - `custom_providers` に登録済み（全て `context_length: 65536`）: `qwen3.5:4b` / `qwen3.5:9b` / `gemma4:12b` / `gemma4:12b-it-qat`
 - **変遷**: 旧設計メモは中核=Qwen3.5-4B想定だったが、現物は12Bがデフォルト。12Bなら grill の質問生成・構造化出力に余裕があり、4B向けの過度な削り込みは不要。
+- **【仕様・実機+deepwiki確認】モデル選択は server-side**: OpenWebUIをHermesフロントにする構成では、gatewayの `/v1/models` は**エージェント1件（既定 "hermes-agent"）だけ**返し、OpenAIリクエストの `model` フィールドは**無視**される。裏のLLMは `config.yaml` の `model.default` で固定。→ **OpenWebUI のドロップダウンから裏の Ollama モデルは選べない（仕様。今は gemma4:12b-it-qat 固定で動作）**。変更は `config.yaml model.default` 編集 / `hermes config set model.default <名>` / チャット内 `/model`。複数を選択肢に出すには **プロファイルごとに別 gateway インスタンス（別ポート）→ OpenWebUI に別 Connection として追加**。表示名は `API_SERVER_MODEL_NAME` で改名可（cosmetic）。要件定義ツールとしては1モデル固定で十分。
 
 ### 5.3 grillスキル生態系（移植元 = Matt Pocock skills）
 | スキル | 役割 |
