@@ -1,5 +1,7 @@
 # 計画書: Open WebUI × Hermes Agent ワンストップ環境
 
+> ⚠️ **廃止 (2026-07-10)**: Open WebUI(gateway経由)では Hermes のスキル(`/grill`)が発火しなかったため、この計画は撤回。**Hermes を CLI/TUI で直接使う**構成に変更した（`compose.yaml` 更新済、`DESIGN-AND-STATUS.md` §2.9 参照）。以下の Open WebUI 前提の手順は歴史的記録として残置。Windows向け `.sh`(Step5) の狙いのみ CLI 構成向けに再利用する。
+
 > ゴール: **`docker compose up -d` するだけ**で「Open WebUI(GUI) → Hermes Agent → Ollama」の
 > 要件定義環境が**完全ローカル**で立ち上がる。最終的に **Windows向けワンストップ `.sh`**
 > （nvidia-container-toolkit 自動導入まで）で誰でも簡単に構築できるようにする。段階的に進める。
