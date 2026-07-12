@@ -1,9 +1,9 @@
 ---
-name: torishirabe-n
+name: n-torishirabe
 description: 要件を1問ずつ聞き出し引継ぎ書を作る取り調べ（通常版）
 ---
 
-# torishirabe-n — 要件定義の取り調べ（通常版）
+# n-torishirabe — 要件定義の取り調べ（通常版）
 
 初学者から「作りたいもの」を1問ずつ聞き出し、クラウドAI（Claude Code / Codex 等）が
 迷わず実装できる **引継ぎ書.md** を作る。壁打ちで脱線して目的を見失うのを防ぐのが狙い。

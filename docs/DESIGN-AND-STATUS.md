@@ -70,7 +70,7 @@
 
 ```
 [初学者] ⇄ Hermes Agent (CLI/TUI) ──> Ollama (:11434) ──GPU──> LLM(gemma等)
-   対話(/torishirabe-n, /torishirabe)  /opt/data/skills     ローカル完結
+   対話(/n-torishirabe, /torishirabe)  /opt/data/skills     ローカル完結
         │
         └── 成果物: 引継ぎ書.md ──(手動で手渡し)──> クラウドAI(Claude Code / Codex)
 
@@ -186,8 +186,8 @@
 
 ## 9. 次の一手（ロードマップ・2026-07-10 更新）
 > 旧 `docs/PLAN-openwebui-onestop.md` は Open WebUI 前提のため大半が無効（先頭に廃止注記済）。
-1. ✅ Hermes CLI/TUI ＋ `/torishirabe-n`・`/torishirabe` を同梱（Open WebUI 廃止）。
-2. **（次）** 実機で **/torishirabe-n → `./vault/torishirabe/<名>/` に 決定ログ.md → 引継ぎ書.md を1本通す**（＝7/16ポスターの統合検証1回）。
+1. ✅ Hermes CLI/TUI ＋ `/n-torishirabe`・`/torishirabe` を同梱（Open WebUI 廃止）。
+2. **（次）** 実機で **/n-torishirabe → `./vault/torishirabe/<名>/` に 決定ログ.md → 引継ぎ書.md を1本通す**（＝7/16ポスターの統合検証1回）。
 3. `up`(ollama) ＋ `run`(hermes) の初回導線整理（初回モデルpull自動化、`config.yaml` 既定モデル確認）。
 4. 完全ローカル強化（offline化）。
 5. Windows向けワンストップ `.sh`（前提チェック → nvidia-container-toolkit 自動導入 → `up -d` → `run --rm -it hermes` 案内）。※APIサーバ不使用なので鍵生成は不要。
