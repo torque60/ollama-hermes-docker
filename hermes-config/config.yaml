@@ -529,9 +529,7 @@ approvals:
 command_allowlist: []
 quick_commands: {}
 platform_hints: {}
-hooks:
-  transform_llm_output:
-    - command: python3 /opt/data/agent-hooks/save-handoff.py
+hooks: {}
 hooks_auto_accept: true
 personalities: {}
 security:
@@ -687,7 +685,8 @@ platform_toolsets:
   google_chat:
   - hermes-google_chat
 plugins:
-  enabled: []
+  enabled:
+    - handoff-saver
 custom_providers:
 - name: Ollama:11434
   base_url: http://ollama:11434/v1

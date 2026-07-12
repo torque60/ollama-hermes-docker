@@ -177,10 +177,10 @@
 
 実機（gemma 12B）で判明: 小型ローカルモデルは「決まったタイミングで正しいパスにファイル書込ツールを呼ぶ」のが不安定（決定ログを書かない／引継ぎ書がテキストのみ／別フォルダに保存）。加えて **Hermes はスキル本文を invoke したターンにしか注入せず、以降のマルチターンでは system prompt に残さない**（progressive disclosure）ため、長い取り調べの途中で小型モデルがスキルの指示を忘れやすい。
 
-→ 原則「構造はコード・知能はAI」に沿って、**永続化をモデルから剥がし Hermes の Shell Hook（コード）に移す**:
+→ 原則「構造はコード・知能はAI」に沿って、**永続化をモデルから剥がし Hermes の Python プラグイン（コード）に移す**:
 - モデル: 対話に専念し、最後に `# 引継ぎ書: <プロジェクト名>` で始まる Markdown ブロックを出力するだけ。
-- `post_llm_call` フック（`hermes-config/agent-hooks/save-handoff.py`）がその見出しを検知し、`/vault/torishirabe/<名>/引継ぎ書.md` に**決定論的に保存**（パスもコードが決める）。
-- `config.yaml`: `hooks.post_llm_call` + `hooks_auto_accept: true`（初回承認プロンプトを省く）。
+- **保存は Python プラグイン**（`hermes-config/plugins/handoff-saver/`）の `post_llm_call` コールバックが担う。`assistant_response` を受け取り見出しを検知して `/vault/torishirabe/<名>/引継ぎ書.md` に**決定論的に保存**（パスもコードが決める）。有効化は `config.yaml` の `plugins.enabled: [handoff-saver]`。
+- **【重要・一次情報で確定 2026-07-13】Shell フックは応答本文を受け取れない**（stdin は `hook_event_name/tool_name/tool_input/session_id/cwd/extra` の封筒のみ。post_llm_call/transform_llm_output いずれも本文なし＝公式docs + 実測で確認）。応答本文に触れられるのは **Python プラグインの `post_llm_call`（`assistant_response`, fire-and-forget＝出力を壊さない）だけ**。deepwiki 等の二次情報は誤りだった。
 - **未採用の候補**: `pre_llm_call` フックで毎ターン、スキル要点を再注入して小型モデルの忘却（上記 progressive disclosure）を補う案。効果は大きいが token/干渉のトレードオフあり。要検討。
 - これはポスターの「失敗と学び」に直結（ローカル小型モデルの限界と、その回避策）。
 
