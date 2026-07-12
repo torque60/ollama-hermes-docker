@@ -9,7 +9,7 @@
 #  使い方:
 #    docker compose up -d                       # ollama だけ常駐
 #    docker compose run --rm -it hermes bash    # hermes を1個起こして入る
-#    hermes --tui                               # 対話TUI（/grill, /torishirabe 発火）
+#    hermes --tui                               # 対話TUI（/torishirabe-n, /torishirabe 発火）
 #    # 一発でTUIに入るなら: docker compose run --rm -it hermes --tui
 # =============================================================
 
@@ -45,8 +45,8 @@ services:
   #    docker compose run --rm -it hermes --tui   # 直接TUI
   #  なぜ常駐にしないか: keep-alive常駐 + 別の hermes --tui = 2プロセスになり、
   #  /opt/data のセッション/メモリが同時書込みで競合する（公式が非対応と警告）。run方式は常に1プロセス。
-  #  --rm でコンテナは毎回破棄されるが、skills/memory/生成物(grill/) は
-  #  ./hermes-config(=/opt/data マウント) に残るので状態は失われない。
+  #  --rm でコンテナは毎回破棄されるが、設定/skills/memory は ./hermes-config、
+  #  成果物(引継ぎ書/決定ログ)は ./vault に残るので状態は失われない。
   #  スキル: ./hermes-config/skills/<name>/SKILL.md が /<name> に自動登録。
   hermes:
     image: nousresearch/hermes-agent:latest   # 公式イメージ（Dockerfile 不要）
@@ -57,7 +57,8 @@ services:
       - PUID=1000                         # /opt/data 配下の生成物をホスト側で扱えるように（id -u）
       - PGID=1000                         # id -g
     volumes:
-      - ./hermes-config:/opt/data          # config.yaml / skills/ / 生成物(grill/) を永続化
+      - ./hermes-config:/opt/data          # 設定系: config.yaml / skills/ を永続化
+      - ./vault:/vault                     # 成果物: 引継ぎ書/決定ログ（将来の Obsidian vault）
 
 volumes:
   ollama_data:                            # Ollama のモデル永続化ボリューム

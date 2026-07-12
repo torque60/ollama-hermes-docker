@@ -3,6 +3,9 @@ hermes-config/*
 # 自作スキルだけ追跡する（Hermes の既定スキルは各環境で自動生成されるので配布しない）
 !hermes-config/skills/
 hermes-config/skills/*
-!hermes-config/skills/grill/
+!hermes-config/skills/torishirabe-n/
 !hermes-config/skills/torishirabe/
 .env
+# 出力(引継ぎ書・決定ログ／将来の Obsidian vault)は追跡しない。空フォルダのみ配布
+vault/*
+!vault/.gitkeep
