@@ -100,7 +100,7 @@ docker compose exec ollama ollama pull <モデル名>
   （= コンテナ `/opt/data/skills/`）に置くと、`/<name>` スラッシュコマンドとして自動登録される。
 - 同梱スキル: **`/torishirabe-n`**（通常版：要件を1問ずつ聞き出し → 決定を逐次記録 → 引継ぎ書を合成）、
   **`/torishirabe`**（同ロジックの刑事風）。
-- 編集は即反映（コンテナ再ビルド不要）。生成物は `./vault/torishirabe/<プロジェクト名>/` に出る。
+- 生成物 `引継ぎ書.md` は `./vault/torishirabe/<プロジェクト名>/` に**自動保存**される（`post_llm_call` フック `hermes-config/agent-hooks/save-handoff.py` が担い、小型モデルにファイル書込みを頼らない）。スキル編集は即反映（再ビルド不要）。
 
 ---
 

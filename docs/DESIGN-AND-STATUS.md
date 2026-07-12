@@ -173,6 +173,17 @@
 
 ---
 
+## 8.5 信頼性対策: 小型モデルのツール実行を hook で肩代わり (2026-07-13)
+
+実機（gemma 12B）で判明: 小型ローカルモデルは「決まったタイミングで正しいパスにファイル書込ツールを呼ぶ」のが不安定（決定ログを書かない／引継ぎ書がテキストのみ／別フォルダに保存）。加えて **Hermes はスキル本文を invoke したターンにしか注入せず、以降のマルチターンでは system prompt に残さない**（progressive disclosure）ため、長い取り調べの途中で小型モデルがスキルの指示を忘れやすい。
+
+→ 原則「構造はコード・知能はAI」に沿って、**永続化をモデルから剥がし Hermes の Shell Hook（コード）に移す**:
+- モデル: 対話に専念し、最後に `# 引継ぎ書: <プロジェクト名>` で始まる Markdown ブロックを出力するだけ。
+- `post_llm_call` フック（`hermes-config/agent-hooks/save-handoff.py`）がその見出しを検知し、`/vault/torishirabe/<名>/引継ぎ書.md` に**決定論的に保存**（パスもコードが決める）。
+- `config.yaml`: `hooks.post_llm_call` + `hooks_auto_accept: true`（初回承認プロンプトを省く）。
+- **未採用の候補**: `pre_llm_call` フックで毎ターン、スキル要点を再注入して小型モデルの忘却（上記 progressive disclosure）を補う案。効果は大きいが token/干渉のトレードオフあり。要検討。
+- これはポスターの「失敗と学び」に直結（ローカル小型モデルの限界と、その回避策）。
+
 ## 9. 次の一手（ロードマップ・2026-07-10 更新）
 > 旧 `docs/PLAN-openwebui-onestop.md` は Open WebUI 前提のため大半が無効（先頭に廃止注記済）。
 1. ✅ Hermes CLI/TUI ＋ `/torishirabe-n`・`/torishirabe` を同梱（Open WebUI 廃止）。

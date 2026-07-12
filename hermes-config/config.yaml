@@ -529,8 +529,10 @@ approvals:
 command_allowlist: []
 quick_commands: {}
 platform_hints: {}
-hooks: {}
-hooks_auto_accept: false
+hooks:
+  post_llm_call:
+    - command: python3 /opt/data/agent-hooks/save-handoff.py
+hooks_auto_accept: true
 personalities: {}
 security:
   allow_private_urls: false
