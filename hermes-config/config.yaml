@@ -296,6 +296,10 @@ display:
   tui_agents_nudge: true
   bell_on_complete: false
   show_reasoning: false
+  sections:
+    thinking: hidden
+    tools: hidden
+    activity: hidden
   reasoning_full: false
   memory_notifications: 'on'
   streaming: true
