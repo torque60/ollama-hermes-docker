@@ -302,7 +302,7 @@ display:
     activity: hidden
   reasoning_full: false
   memory_notifications: 'on'
-  streaming: true
+  streaming: false
   timestamps: false
   final_response_markdown: strip
   persistent_output: true
@@ -530,7 +530,7 @@ command_allowlist: []
 quick_commands: {}
 platform_hints: {}
 hooks:
-  post_llm_call:
+  transform_llm_output:
     - command: python3 /opt/data/agent-hooks/save-handoff.py
 hooks_auto_accept: true
 personalities: {}
