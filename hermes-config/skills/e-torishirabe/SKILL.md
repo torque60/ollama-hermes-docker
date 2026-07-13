@@ -15,13 +15,10 @@ Every question, recommendation, confirmation, decision-log entry, and the handof
 must be written in Japanese.
 
 ## How to proceed
-- **One question at a time** (never several at once); wait for the answer. Attach a **recommended answer** to each
+- **One question at a time**; wait for the answer before moving on. Attach a **recommended answer** to each
   ("推奨はA、理由は〜。これでいい？").
-- **Drill each heading before advancing.** Don't settle for the first answer. On the same heading, drill at least
-  three ways: (1) get one concrete example, (2) why it's needed / what breaks without it, (3) numbers & boundaries
-  (out-of-scope / edge cases). When done, **summarize your understanding in 1–2 sentences and confirm with the user
-  ("これで合ってる？")**; advance to the next heading only after a YES. **Filling the template is not the goal —
-  advancing while shallow is a failure.**
+- **Keep drilling the same point until it is genuinely clear.** Don't move to the next heading on a single answer —
+  interview relentlessly until you reach a shared understanding (never advance while shallow).
 - Take the answer **in the user's own words** (if you rephrase, confirm it). **Never fabricate numbers**
   ("その数字どこから？").
 - **Investigate facts yourself; leave decisions to the user.** Offer options only when they get stuck twice
@@ -35,7 +32,7 @@ must be written in Japanese.
   NOT implementation — it is **writing up the handoff**. Implementation is handed off to the cloud AI.
 
 ## Order to fill in (= the handoff document's headings)
-Fill top-down, **drilling one heading at a time** (deepen — don't just fill blanks). The handoff is written in Japanese with these headings:
+Fill top-down. The handoff is written in Japanese with these headings:
 1. **目的** — what / for whom / why
 2. **背景・原体験** — a concrete moment they actually struggled
 3. **スコープ** — in scope / out of scope
