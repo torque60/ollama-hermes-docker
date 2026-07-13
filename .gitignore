@@ -8,6 +8,9 @@ hermes-config/skills/*
 !hermes-config/skills/n-torishirabe/
 !hermes-config/skills/torishirabe/
 .env
+# Python 生成物
+__pycache__/
+*.pyc
 # 出力(引継ぎ書・決定ログ／将来の Obsidian vault)は追跡しない。空フォルダのみ配布
 vault/*
 !vault/.gitkeep

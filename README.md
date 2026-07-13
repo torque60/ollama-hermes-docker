@@ -100,7 +100,11 @@ docker compose exec ollama ollama pull <モデル名>
   （= コンテナ `/opt/data/skills/`）に置くと、`/<name>` スラッシュコマンドとして自動登録される。
 - 同梱スキル: **`/n-torishirabe`**（通常版：要件を1問ずつ聞き出し → 決定を逐次記録 → 引継ぎ書を合成）、
   **`/torishirabe`**（同ロジックの刑事風）。
-- 生成物 `引継ぎ書.md` は `./vault/torishirabe/<プロジェクト名>/` に**自動保存**される（Python プラグイン `hermes-config/plugins/handoff-saver/` の `post_llm_call` フックが担い、小型モデルにファイル書込みを頼らない）。スキル編集は即反映（再ビルド不要）。
+- 生成物 `引継ぎ書.md` は `./vault/torishirabe/<プロジェクト名>/` に保存される。保存は Python プラグイン
+  `hermes-config/plugins/handoff-saver/` が提供する **`save_handoff` ツール**が担う：**パス決定と書込はコード側**で行い、
+  モデルは最後に `save_handoff(project_name, markdown)` を1回呼ぶだけ（小型モデルにパス構築やファイル書込を委ねない）。
+  ※応答本文をフックで横取りする方式は Hermes では不可能（shell フックは本文を受け取れず、plugin の `post_llm_call` は
+  本体未実装＝[#2817](https://github.com/NousResearch/hermes-agent/issues/2817)）なため、確実に発火するツール呼び出しに一本化している。スキル編集は即反映（再ビルド不要）。
 
 ---
 

@@ -177,12 +177,27 @@
 
 実機（gemma 12B）で判明: 小型ローカルモデルは「決まったタイミングで正しいパスにファイル書込ツールを呼ぶ」のが不安定（決定ログを書かない／引継ぎ書がテキストのみ／別フォルダに保存）。加えて **Hermes はスキル本文を invoke したターンにしか注入せず、以降のマルチターンでは system prompt に残さない**（progressive disclosure）ため、長い取り調べの途中で小型モデルがスキルの指示を忘れやすい。
 
-→ 原則「構造はコード・知能はAI」に沿って、**永続化をモデルから剥がし Hermes の Python プラグイン（コード）に移す**:
-- モデル: 対話に専念し、最後に `# 引継ぎ書: <プロジェクト名>` で始まる Markdown ブロックを出力するだけ。
-- **保存は Python プラグイン**（`hermes-config/plugins/handoff-saver/`）の `post_llm_call` コールバックが担う。`assistant_response` を受け取り見出しを検知して `/vault/torishirabe/<名>/引継ぎ書.md` に**決定論的に保存**（パスもコードが決める）。有効化は `config.yaml` の `plugins.enabled: [handoff-saver]`。
-- **【重要・一次情報で確定 2026-07-13】Shell フックは応答本文を受け取れない**（stdin は `hook_event_name/tool_name/tool_input/session_id/cwd/extra` の封筒のみ。post_llm_call/transform_llm_output いずれも本文なし＝公式docs + 実測で確認）。応答本文に触れられるのは **Python プラグインの `post_llm_call`（`assistant_response`, fire-and-forget＝出力を壊さない）だけ**。deepwiki 等の二次情報は誤りだった。
-- **未採用の候補**: `pre_llm_call` フックで毎ターン、スキル要点を再注入して小型モデルの忘却（上記 progressive disclosure）を補う案。効果は大きいが token/干渉のトレードオフあり。要検討。
-- これはポスターの「失敗と学び」に直結（ローカル小型モデルの限界と、その回避策）。
+→ 原則「構造はコード・知能はAI」に沿って、**永続化をモデルから剥がしコード側に移す**。ただし
+「どこでコードに橋渡しするか（＝どの拡張点が確実に発火するか）」の調査で二転三転したので、確定した結論を記す。
+
+### 拡張点の実測マップ（一次情報で確定 2026-07-13）
+| 経路 | 応答本文が取れるか | 実際に発火するか | 採否 |
+|---|---|---|---|
+| shell フック（config `hooks:`） | ❌ envelope のみ（`hook_event_name/tool_name/tool_input/session_id/cwd/extra`） | ✅（本文なし） | 不可 |
+| plugin `post_llm_call` / `pre_llm_call` / `on_session_start`/`end` | ⭕（設計上 `assistant_response`） | **❌ 本体未実装で一度も呼ばれない** | **不可** |
+| plugin `pre_tool_call` / `post_tool_call` | ⭕ | ✅ | 発火する唯一の足場 |
+| **plugin カスタムツール（`ctx.register_tool`）** | — | ✅ 呼ばれれば確実に実行 | **採用** |
+
+- **plugin の LLM 系フックは死んでいる**: `pre_llm_call/post_llm_call/on_session_start/on_session_end` は `VALID_HOOKS` に載るだけで `run_agent.py` に `invoke_hook()` が無い＝**未実装バグ**。[NousResearch/hermes-agent #2817](https://github.com/NousResearch/hermes-agent/issues/2817)（closed: not planned）。実機でも「プラグインは enabled なのに plugin.log すら出ない」で症状一致。
+- **shell フックは応答本文を受け取れない**（stdin は封筒のみ。公式docs + 実測で確認）。
+- 教訓: deepwiki / サブエージェントの二次情報は今回いずれも誤り。**一次情報（公式docs 原文・GitHub issue）で裏取り**して初めて確定した。
+
+### 確定した設計: `save_handoff` カスタムツール
+フックで応答本文を横取りする案は全滅。確実に走るのは「ツール呼び出し」だけなので、**本体に汎用ファイルツールでパスを組ませる（＝実機で失敗した）のをやめ、専用ツールを1つ生やす**:
+- **プラグイン** `hermes-config/plugins/handoff-saver/` が `ctx.register_tool` で **`save_handoff(project_name, markdown)`** を登録。ハンドラが `/vault/torishirabe/<project_name>/引継ぎ書.md` に**決定論的に保存**（パス決定・書込は全部コード）。有効化は `config.yaml` の `plugins.enabled: [handoff-saver]`。
+- **モデルの仕事は「最後に `save_handoff` を1回呼ぶ」だけ**。パス構築を委ねないので、以前の *別フォルダに保存* 失敗は原理的に消える。残る不確実性は「ツールを1回呼ぶか」のみ（編集デモなら再試行可、キットにはフォールバック明記）。
+- **未採用の候補**: 12B がツール呼び出しすら忘れる場合に備え、`post_tool_call`（発火する）で確認ログを取る／`pre_tool_call` で誘導する等。まず素の `save_handoff` で実機検証してから判断。
+- これはポスターの「失敗と学び」に直結（ローカル小型モデルのツール実行の限界＝“書かせずに呼ばせる／橋渡しはコード”という回避策）。
 
 ## 9. 次の一手（ロードマップ・2026-07-10 更新）
 > 旧 `docs/PLAN-openwebui-onestop.md` は Open WebUI 前提のため大半が無効（先頭に廃止注記済）。

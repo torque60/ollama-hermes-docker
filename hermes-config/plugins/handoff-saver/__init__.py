@@ -1,23 +1,50 @@
-"""handoff-saver: 引継ぎ書を /vault に自動保存する Hermes プラグイン。
+"""handoff-saver: 引継ぎ書を /vault に確定保存する Hermes プラグイン。
 
-Shell フックは応答本文を受け取れない（公式docs+実測で確認）。応答本文
-`assistant_response` に触れられるのは Python プラグインの post_llm_call だけ
-（fire-and-forget＝返り値無視で出力を壊さない）。ここでその本文を受け取り、
-「# 引継ぎ書: <名>」で始まっていれば /vault/torishirabe/<名>/引継ぎ書.md に保存する。
+背景（重要）:
+  応答本文をフックで横取りする案は Hermes では不可能。
+  - shell フックは envelope のみで応答本文を受け取れない。
+  - plugin の post_llm_call / pre_llm_call は VALID_HOOKS に載るだけで
+    本体が一度も呼ばない未実装バグ（NousResearch/hermes-agent #2817, closed:not-planned）。
+  確実に発火する足場は「ツール呼び出し」だけ。そこで本体に書かせるのをやめ、
+  専用ツール save_handoff を1つ生やす。モデルの仕事は「最後にこれを1回呼ぶ」だけで、
+  保存パスの決定もファイル書込も全部このコード側でやる（= code for structure）。
 
-小型ローカルモデルにファイル書込ツールを頼らず、保存を決定論的にコード側で行う。
+小型ローカルモデル(12B)でも、汎用ファイルツールでパスを組ませる（失敗した）のではなく、
+project_name と markdown を渡させるだけなので、パス誤り・書込失敗は原理的に起きない。
 """
 
+import json
 import re
 from pathlib import Path
 
 VAULT_ROOT = Path("/vault/torishirabe")
 LOG = Path("/opt/data/plugins/handoff-saver/plugin.log")
 
-# 引継ぎ書の見出し（半角/全角コロン両対応）。この行を保存対象の目印にする。
+# project_name 未指定時のフォールバック用。「# 引継ぎ書: <名>」から名前を拾う。
 TITLE_RE = re.compile(r"^#\s*引継ぎ書\s*[:：]\s*(?P<name>.+?)\s*$", re.MULTILINE)
 
-_TEXT_KEYS = ("assistant_response", "response", "response_text", "text")
+SAVE_SCHEMA = {
+    "name": "save_handoff",
+    "description": (
+        "要件定義の引継ぎ書(Markdown)を確定保存する。全項目が固まったら最後に1回だけ呼ぶ。"
+        "project_name にプロジェクト名、markdown に引継ぎ書の全文を渡すと、"
+        "/vault/torishirabe/<project_name>/引継ぎ書.md に保存する。"
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "project_name": {
+                "type": "string",
+                "description": "プロジェクト名。保存先フォルダ名になる（例: ポモドーロタイマー）。",
+            },
+            "markdown": {
+                "type": "string",
+                "description": "引継ぎ書の全文(Markdown)。見出し8項目を含む完成版を丸ごと渡す。",
+            },
+        },
+        "required": ["project_name", "markdown"],
+    },
+}
 
 
 def _log(msg: str) -> None:
@@ -29,44 +56,48 @@ def _log(msg: str) -> None:
         pass
 
 
-def _extract_text(args, kwargs) -> str:
-    # まず既知のキーワード名で探す
-    for k in _TEXT_KEYS:
-        v = kwargs.get(k)
-        if isinstance(v, str) and v.strip():
-            return v
-    # 位置引数で来た場合は、最も長い文字列を本文とみなす（response が最長のはず）
-    strs = [a for a in args if isinstance(a, str) and a.strip()]
-    if strs:
-        return max(strs, key=len)
-    return ""
+def _safe(name: str) -> str:
+    """フォルダ名に使える形へ。日本語(かな/カナ/漢字)・英数・空白・一部記号のみ残す。"""
+    cleaned = re.sub(r"[^\w\-. 　ぁ-んァ-ヶ一-龠]", "_", name).strip()
+    return cleaned or "project"
 
 
-def _save(text: str) -> None:
-    m = TITLE_RE.search(text) if text else None
-    if not m:
-        _log(f"[SKIP] no marker. len={len(text)} head={text[:80]!r}")
-        return
-    name = m.group("name").strip()
-    safe = re.sub(r"[^\w\-. 　ぁ-んァ-ヶ一-龠]", "_", name).strip() or "project"
-    doc = text[m.start():].rstrip() + "\n"
-    out = VAULT_ROOT / safe / "引継ぎ書.md"
+def handle_save(params, **kwargs):
+    """save_handoff ツールの実体。呼ばれれば確実に走る（フックと違い実装済み）。"""
+    del kwargs
     try:
+        markdown = (params.get("markdown") or "").strip()
+        name = (params.get("project_name") or "").strip()
+
+        # project_name が空なら本文の見出しから救済的に拾う
+        if not name:
+            m = TITLE_RE.search(markdown)
+            if m:
+                name = m.group("name").strip()
+
+        if not markdown:
+            _log(f"[ERR] empty markdown. name={name!r}")
+            return json.dumps(
+                {"success": False, "error": "markdown が空です。引継ぎ書の全文を渡してください。"},
+                ensure_ascii=False,
+            )
+
+        out = VAULT_ROOT / _safe(name) / "引継ぎ書.md"
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(doc, encoding="utf-8")
-        _log(f"[SAVED] {out} ({len(doc)} chars)")
-    except Exception as e:  # 保存失敗しても会話は止めない
+        out.write_text(markdown.rstrip() + "\n", encoding="utf-8")
+        _log(f"[SAVED] {out} ({len(markdown)} chars) name={name!r}")
+        return json.dumps({"success": True, "saved": str(out)}, ensure_ascii=False)
+    except Exception as e:  # 保存に失敗しても会話は止めない
         _log(f"[ERR] save failed: {e}")
-
-
-def on_post_llm_call(*args, **kwargs) -> None:
-    text = _extract_text(args, kwargs)
-    _log(
-        f"[FIRE] argtypes={[type(a).__name__ for a in args]} "
-        f"kwargs={list(kwargs.keys())} text_len={len(text)}"
-    )
-    _save(text)
+        return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
 
 
 def register(ctx) -> None:
-    ctx.register_hook("post_llm_call", on_post_llm_call)
+    ctx.register_tool(
+        name="save_handoff",
+        toolset="handoff",
+        schema=SAVE_SCHEMA,
+        handler=handle_save,
+        description=SAVE_SCHEMA["description"],
+    )
+    _log("[REGISTER] save_handoff registered")

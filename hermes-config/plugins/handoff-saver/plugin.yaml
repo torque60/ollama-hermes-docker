@@ -1,3 +1,3 @@
 name: handoff-saver
 version: "1.0"
-description: 引継ぎ書(「# 引継ぎ書: <名>」で始まる応答)を /vault/torishirabe/<名>/ に自動保存する post_llm_call プラグイン
+description: 引継ぎ書を /vault/torishirabe/<project_name>/ に確定保存する save_handoff ツールを提供するプラグイン（本体でパス決定・書込を行い、モデルはツールを1回呼ぶだけ）
