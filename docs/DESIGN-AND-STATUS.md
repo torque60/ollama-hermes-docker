@@ -199,6 +199,21 @@
 - **未採用の候補**: 12B がツール呼び出しすら忘れる場合に備え、`post_tool_call`（発火する）で確認ログを取る／`pre_tool_call` で誘導する等。まず素の `save_handoff` で実機検証してから判断。
 - これはポスターの「失敗と学び」に直結（ローカル小型モデルのツール実行の限界＝“書かせずに呼ばせる／橋渡しはコード”という回避策）。
 
+### 実機結果と最終方針（2026-07-13 追記）
+- **save_handoff ツールも実機で不発**: プラグインは `[REGISTER]` まで到達するが `save_handoff` が一度も呼ばれず `[SAVED]` が出ない。`platform_toolsets.cli` / `known_plugin_toolsets.cli` に `handoff` を追加してもモデルが呼ばない（toolset 露出の不確実性＋Hermes が起動時に config を書き戻す性質）。→ **フック系・ツール系＝モデル/フレームワーク依存の経路は全滅**。
+- **確実に動くのは state.db 直読み**（`scripts/save_handoff.py`）: Hermes が `/opt/data/state.db`(SQLite) に永続化した会話から「# 引継ぎ書:」を決定論的に抽出。モデル挙動に非依存で確実。**ただし Hermes 固有**（他エージェントでは使えない）。
+
+### 汎用化の理想形: 捕捉は「LLM API 層」へ（未実装・設計記録）
+問い「色々なエージェントで汎用に使いたい。hooks で会話は読めないのか？」への結論を記録:
+- **hooks は汎用捕捉手段にならない**。(a) Hermes ではどのフックでもアシスタント本文を取れない（shell=封筒のみ / plugin LLMフック=未実装 #2817 / tool フック=tool 情報のみ）。(b) そもそも hooks 仕様はフレームワーク毎にバラバラで横断標準が無い（Claude Code の Stop フックは transcript を読めるが Hermes は不可、等）。
+- **唯一エージェント非依存の継ぎ目＝全エージェントが叩く OpenAI 互換 API**（`ollama:11434/v1`）。ここに**捕捉プロキシ**を挟めば、Hermes だろうが他のローカルエージェントだろうが base_url を向けるだけで引継ぎ書を回収できる。
+  ```
+  各エージェント ─base_url→ [capture-proxy] → ollama:11434/v1
+                                 └ 応答(JSON/SSE)を覗き「# 引継ぎ書: <名>」検知 → /vault 保存
+  ```
+- 実装コスト: プロキシ1サービス（自作〜80行 or mitmproxy / LiteLLM proxy）。難所は SSE ストリーム再結合と「最終確定版だけ保存（途中版の乱立回避）」の判定。
+- **判断**: 7/16 デモまで時間が無いため未実装。デモは state.db 抽出（実装済・確実）で通し、**汎用化(APIプロキシ)は次フェーズの本命候補として記録**。これ自体がプレゼンの「失敗と学び／今後の展望」に直結。
+
 ## 9. 次の一手（ロードマップ・2026-07-10 更新）
 > 旧 `docs/PLAN-openwebui-onestop.md` は Open WebUI 前提のため大半が無効（先頭に廃止注記済）。
 1. ✅ Hermes CLI/TUI ＋ `/n-torishirabe`・`/torishirabe` を同梱（Open WebUI 廃止）。
