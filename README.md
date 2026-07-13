@@ -100,11 +100,10 @@ docker compose exec ollama ollama pull <モデル名>
   （= コンテナ `/opt/data/skills/`）に置くと、`/<name>` スラッシュコマンドとして自動登録される。
 - 同梱スキル: **`/n-torishirabe`**（通常版：要件を1問ずつ聞き出し → 決定を逐次記録 → 引継ぎ書を合成）、
   **`/torishirabe`**（同ロジックの刑事風）。
-- 取り調べの成果物は、会話に出力される **`# 引継ぎ書: <プロジェクト名>` で始まる Markdown ブロック**。
-  これをコピーしてクラウドAI（Claude Code / Codex 等）へ渡す。
-  ※ローカル小型モデル＋Hermes では、この引継ぎ書をファイルへ**自動保存する実装は断念**した（shell hook は本文を受け取れず、
-  plugin の `post_llm_call` は本体未実装＝[#2817](https://github.com/NousResearch/hermes-agent/issues/2817)、`save_handoff` ツールはモデルが呼ばず、
-  `transform_llm_output` プラグインはロードに至らず——顛末は `docs/DESIGN-AND-STATUS.md`）。生成物は画面上のブロックとして受け取る運用。スキル編集は即反映（再ビルド不要）。
+- スキルは Hermes の **file ツール**で成果物を `./vault/torishirabe/<プロジェクト名>/` に書く：1問ごとに
+  **`決定ログ.md`** へ逐次追記し、最後に **`引継ぎ書.md`**（`# 引継ぎ書: <名>` で始まる全文）を書き出す。これをクラウドAI（Claude Code / Codex 等）へ渡す。
+  ※これはモデル自身にファイル書込を委ねる方式で、**ローカル小型モデルでは書き漏らし・別フォルダ書込が起こり得る**（絶対パス固定で軽減）。
+  フックやプラグインによる決定論的な自動保存は Hermes では実現できなかった（顛末と将来のAPI層プロキシ案は `docs/DESIGN-AND-STATUS.md`）。スキル編集は即反映（再ビルド不要）。
 
 ---
 
