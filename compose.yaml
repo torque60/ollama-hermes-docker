@@ -58,12 +58,7 @@ services:
       - PGID=1000                         # id -g
     volumes:
       - ./hermes-config:/opt/data          # 設定系: config.yaml / skills/ を永続化
-      # 成果物: 引継ぎ書/決定ログ（将来の Obsidian vault）。
-      #  file ツールは書込先を HERMES_HOME(/opt/data) にサンドボックスするため、
-      #  モデルが `/vault/...` と書いても実際は `/opt/data/vault/...` に落ちる。
-      #  そこで host ./vault を /opt/data/vault にも割り当て、どちらの解決でも host ./vault に着地させる。
-      - ./vault:/vault
-      - ./vault:/opt/data/vault
+      - ./vault:/vault                     # 成果物: 引継ぎ書/決定ログ（将来の Obsidian vault）
 
 volumes:
   ollama_data:                            # Ollama のモデル永続化ボリューム
