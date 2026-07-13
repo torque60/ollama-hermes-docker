@@ -58,7 +58,11 @@ services:
       - PGID=1000                         # id -g
     volumes:
       - ./hermes-config:/opt/data          # 設定系: config.yaml / skills/ を永続化
-      - ./vault:/vault                     # 成果物: 引継ぎ書/決定ログ（将来の Obsidian vault）
+      # 成果物: 引継ぎ書/決定ログ（将来の Obsidian vault）。
+      #  file ツールは書込を HERMES_HOME(/opt/data) 配下に制限する（root の /vault は "保護" 判定で拒否）。
+      #  そこでワークスペース内の /opt/data/vault に host ./vault を割り当て、
+      #  スキルは相対パス vault/... で書く（=/opt/data/vault に着地=許可される）→ host ./vault に残る。
+      - ./vault:/opt/data/vault
 
 volumes:
   ollama_data:                            # Ollama のモデル永続化ボリューム
