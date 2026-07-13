@@ -5,6 +5,7 @@ hermes-config/*
 hermes-config/skills/*
 !hermes-config/skills/n-torishirabe/
 !hermes-config/skills/torishirabe/
+!hermes-config/skills/e-torishirabe/
 .env
 # Python 生成物
 __pycache__/

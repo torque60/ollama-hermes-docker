@@ -99,7 +99,7 @@ docker compose exec ollama ollama pull <モデル名>
 - Hermes のスキルは `SKILL.md`（Markdown）。ホスト `./hermes-config/skills/<name>/SKILL.md`
   （= コンテナ `/opt/data/skills/`）に置くと、`/<name>` スラッシュコマンドとして自動登録される。
 - 同梱スキル: **`/n-torishirabe`**（通常版：要件を1問ずつ聞き出し → 決定を逐次記録 → 引継ぎ書を合成）、
-  **`/torishirabe`**（同ロジックの刑事風）。
+  **`/torishirabe`**（同ロジックの刑事風）、**`/e-torishirabe`**（同ロジック・SKILL.md の指示文だけ英語／応答・成果物は日本語）。
 - スキルは成果物をファイルに書く：1問ごとに **`決定ログ.md`** へ逐次追記し、最後に
   **`引継ぎ書.md`**（`# 引継ぎ書: <名>` で始まる全文）を書き出す。これをクラウドAI（Claude Code / Codex 等）へ渡す。
 - 書込先は **`/opt/data/vault/torishirabe/<プロジェクト名>/`**（作業領域 `/opt/data` 配下＝file ツールが許可する場所。
