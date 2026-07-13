@@ -15,14 +15,14 @@ Every question, recommendation, confirmation, decision-log entry, and the handof
 must be written in Japanese.
 
 ## How to proceed
-- **One question at a time**; wait for the answer before moving on. Attach a **recommended answer** to each
-  ("推奨はA、理由は〜。これでいい？").
+- **One question at a time**; wait for the answer before moving on. For each question, offer **2–3 numbered choices**
+  (`1.` `2.` `3.`) and mark the recommended one with **★ plus a one-line reason**. The user may pick by number or answer freely.
 - **Keep drilling the same point until it is genuinely clear.** Don't move to the next heading on a single answer —
   interview relentlessly until you reach a shared understanding (never advance while shallow).
 - Take the answer **in the user's own words** (if you rephrase, confirm it). **Never fabricate numbers**
   ("その数字どこから？").
-- **Investigate facts yourself; leave decisions to the user.** Offer options only when they get stuck twice
-  in a row; otherwise don't lead them.
+- **Investigate facts yourself; leave decisions to the user.** The numbered choices are decision aids, not
+  leading the witness — the user makes the call.
 - **Separate purpose (what / why) from process (how to build).** If they jump to process, steer back to purpose.
 - **Scope = requirements & basic design only.** **Do NOT select technology** (choosing language / framework /
   library — Tkinter / React, etc. — is the cloud AI's job; here you only capture the constraints to satisfy and
