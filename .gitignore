@@ -1,7 +1,5 @@
 hermes-config/*
 !hermes-config/config.yaml
-!hermes-config/plugins/
-hermes-config/plugins/*/*.log
 # 自作スキルだけ追跡する（Hermes の既定スキルは各環境で自動生成されるので配布しない）
 !hermes-config/skills/
 hermes-config/skills/*

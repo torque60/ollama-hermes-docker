@@ -684,9 +684,7 @@ platform_toolsets:
   - hermes-teams
   google_chat:
   - hermes-google_chat
-plugins:
-  enabled:
-    - handoff-saver
+plugins: {}
 custom_providers:
 - name: Ollama:11434
   base_url: http://ollama:11434/v1

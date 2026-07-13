@@ -100,11 +100,11 @@ docker compose exec ollama ollama pull <モデル名>
   （= コンテナ `/opt/data/skills/`）に置くと、`/<name>` スラッシュコマンドとして自動登録される。
 - 同梱スキル: **`/n-torishirabe`**（通常版：要件を1問ずつ聞き出し → 決定を逐次記録 → 引継ぎ書を合成）、
   **`/torishirabe`**（同ロジックの刑事風）。
-- 生成物 `引継ぎ書.md` は `./vault/torishirabe/<プロジェクト名>/` に**自動保存**される。保存は Python プラグイン
-  `hermes-config/plugins/handoff-saver/` の **`transform_llm_output` フック**が担う：アシスタントの応答本文を毎ターン受け取り、
-  `# 引継ぎ書: <名>` を検知したら**コード側でパス決定・書込**する（小型モデルにファイル書込やツール呼び出しを委ねない）。
-  ※`transform_llm_output` はアシスタントの応答本文を受け取れる実装済みフック。shell フックは本文を受け取れず、plugin の
-  `post_llm_call` は本体未実装（[#2817](https://github.com/NousResearch/hermes-agent/issues/2817)）なので使わない。スキル/プラグイン編集は即反映（再ビルド不要）。
+- 取り調べの成果物は、会話に出力される **`# 引継ぎ書: <プロジェクト名>` で始まる Markdown ブロック**。
+  これをコピーしてクラウドAI（Claude Code / Codex 等）へ渡す。
+  ※ローカル小型モデル＋Hermes では、この引継ぎ書をファイルへ**自動保存する実装は断念**した（shell hook は本文を受け取れず、
+  plugin の `post_llm_call` は本体未実装＝[#2817](https://github.com/NousResearch/hermes-agent/issues/2817)、`save_handoff` ツールはモデルが呼ばず、
+  `transform_llm_output` プラグインはロードに至らず——顛末は `docs/DESIGN-AND-STATUS.md`）。生成物は画面上のブロックとして受け取る運用。スキル編集は即反映（再ビルド不要）。
 
 ---
 
