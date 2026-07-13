@@ -649,6 +649,7 @@ platform_toolsets:
   - skills
   - terminal
   - todo
+  - handoff
   telegram:
   - hermes-telegram
   discord:
@@ -703,6 +704,7 @@ custom_providers:
 known_plugin_toolsets:
   cli:
   - spotify
+  - handoff
   discord:
   - spotify
 
