@@ -203,6 +203,13 @@
 - **save_handoff ツールも実機で不発**: プラグインは `[REGISTER]` まで到達するが `save_handoff` が一度も呼ばれず `[SAVED]` が出ない。`platform_toolsets.cli` / `known_plugin_toolsets.cli` に `handoff` を追加してもモデルが呼ばない（toolset 露出の不確実性＋Hermes が起動時に config を書き戻す性質）。→ **フック系・ツール系＝モデル/フレームワーク依存の経路は全滅**。
 - **確実に動くのは state.db 直読み**（`scripts/save_handoff.py`）: Hermes が `/opt/data/state.db`(SQLite) に永続化した会話から「# 引継ぎ書:」を決定論的に抽出。モデル挙動に非依存で確実。**ただし Hermes 固有**（他エージェントでは使えない）。
 
+### 訂正: hooks は「全滅」ではなかった — `transform_llm_output` が正解（2026-07-13）
+公式docs 原文の再精読で判明。応答本文を受け取れる**実装済みのプラグイン経路が2つ**あった。当初 `post_llm_call`（唯一の未実装フック #2817）を掴んだのが敗因で、「hooks 全滅」は誤りだった。
+- **`transform_llm_output`（plugin フック）＝採用**: `def cb(response_text, session_id, model, platform, **kwargs) -> str|None`。**`response_text` にアシスタントの最終応答本文**が入る。毎ターン、ツールループ後・配信前に発火。`None` を返せば出力素通し（fire-and-forget 捕捉）。#2817 の未実装リストには**含まれない**（transform 系は truncation/redaction パイプラインで実際に使われる実装済み機能）。→ handoff-saver を `transform_llm_output` 登録に変更し、`# 引継ぎ書:` を検知して保存。save_handoff ツール方式と config の toolset 追記は撤去。
+- **Memory Provider プラグイン `sync_turn(user_content, assistant_content, *, session_id, messages)`＝高確度フォールバック**: 「各ターン完了後」に呼ばれ **`assistant_content` を受け取る**。docs が test・reference 実装ありと明記＝確実に実装済み。会話観測が本来の用途で相性も最良。transform_llm_output が不発ならこちら。
+- shell フックはやはり本文不可（stdin は封筒のみ）。本文が取れるのは plugin の `transform_llm_output` / `post_llm_call`(未実装) / memory `sync_turn` だけ。
+- **教訓**: 同じ family の隣のフックのシグネチャまで読まずに詰み扱いした。一次docs は引数まで精読すること。二次情報（deepwiki/サブエージェント）は今回も部分的に誤り。
+
 ### 汎用化の理想形: 捕捉は「LLM API 層」へ（未実装・設計記録）
 問い「色々なエージェントで汎用に使いたい。hooks で会話は読めないのか？」への結論を記録:
 - **hooks は汎用捕捉手段にならない**。(a) Hermes ではどのフックでもアシスタント本文を取れない（shell=封筒のみ / plugin LLMフック=未実装 #2817 / tool フック=tool 情報のみ）。(b) そもそも hooks 仕様はフレームワーク毎にバラバラで横断標準が無い（Claude Code の Stop フックは transcript を読めるが Hermes は不可、等）。
