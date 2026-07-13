@@ -77,5 +77,12 @@ def on_llm_output(*args, **kwargs):
 
 
 def register(ctx) -> None:
-    ctx.register_hook("transform_llm_output", on_llm_output)
-    _log("[REGISTER] transform_llm_output registered")
+    # まず「register に入った」ことを記録（register_hook で落ちても手前は残る）
+    _log("[REGISTER] register() entered")
+    try:
+        ctx.register_hook("transform_llm_output", on_llm_output)
+        _log("[REGISTER] transform_llm_output wired OK")
+    except Exception as e:
+        # register_hook が名前を弾いた場合、例外に有効なフック名が出ることが多い
+        _log(f"[REGISTER][ERR] register_hook('transform_llm_output') failed: {e!r}")
+        raise
