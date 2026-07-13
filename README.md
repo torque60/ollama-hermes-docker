@@ -102,9 +102,9 @@ docker compose exec ollama ollama pull <モデル名>
   **`/torishirabe`**（同ロジックの刑事風）。
 - スキルは成果物をファイルに書く：1問ごとに **`決定ログ.md`** へ逐次追記し、最後に
   **`引継ぎ書.md`**（`# 引継ぎ書: <名>` で始まる全文）を書き出す。これをクラウドAI（Claude Code / Codex 等）へ渡す。
-- 書込先は**相対パス `vault/torishirabe/<プロジェクト名>/`**。Hermes の file ツールは書込を作業領域(`/opt/data`)配下に制限し、
-  root 直下の `/vault` は "保護" 判定で拒否するため、compose で **`./vault:/opt/data/vault`** を割り当て、相対 `vault/…` が
-  そこ（＝host の `./vault`）に着地するようにしている。
+- 書込先は **`/opt/data/vault/torishirabe/<プロジェクト名>/`**（作業領域 `/opt/data` 配下＝file ツールが許可する場所。
+  root 直下の `/vault` は "保護" 判定で拒否される）。compose で **`./vault:/opt/data/vault`** を割り当てているので、
+  host 側は別フォルダ `./vault` に残る。
   ※モデル自身にファイル書込を委ねる方式で、**ローカル小型モデルでは書き漏らしが起こり得る**。フック/プラグインによる決定論的自動保存は
   Hermes では実現できなかった（顛末と将来のAPI層プロキシ案は `docs/DESIGN-AND-STATUS.md`）。スキル編集は即反映（再ビルド不要）。
 
